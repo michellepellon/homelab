@@ -1,0 +1,48 @@
+version: '3.9'
+
+services:
+  vaultwarden:
+    image: vaultwarden/server:1.27.0
+    env_file:
+      - .env
+    volumes:
+      - './Data/Vaultwarden:/data'
+    restart: on-failure
+    environment:
+      WEBSOCKET_ENABLED: '${WEBSOCKET_ENABLED}'
+      SIGNUPS_ALLOWED: '${SIGNUPS_ALLOWED}'
+
+      # Logging
+      LOG_FILE: '/data/vaultwarden.log'
+      LOG_LEVEL: '${LOG_LEVEL}'
+
+  nginx:
+    build: './nginx'
+    env_file:
+      - .env
+    links:
+      - vaultwarden
+    environment:
+      VIRTUAL_HOST: '${VIRTUAL_HOST}'
+    command: /bin/sh -c "/run_nginx.sh"
+    restart: on-failure
+    networks:
+      default:
+      traefik-proxy:
+        ipv4_address: 192.169.10.247
+    ports:
+      - "443:443"
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.${PROJECT_IDENTIFIER}.tls=true'
+      - 'traefik.http.routers.${PROJECT_IDENTIFIER}.entrypoints=https'
+      - 'traefik.http.routers.${PROJECT_IDENTIFIER}.rule=Host(`${VIRTUAL_HOST}`)'
+      - 'traefik.http.routers.${PROJECT_IDENTIFIER}.service=${PROJECT_IDENTIFIER}'
+      - 'traefik.http.services.${PROJECT_IDENTIFIER}.loadbalancer.server.port=443'
+
+networks:
+  default:
+    driver: bridge
+  traefik-proxy:
+    name: traefik-proxy
+    driver: bridge

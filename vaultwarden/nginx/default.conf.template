@@ -1,0 +1,34 @@
+server {
+    listen 443;
+    server_name localhost;
+
+    client_body_temp_path /tmp/nginx;
+    client_max_body_size 128M;
+
+    ssl on;
+    ssl_certificate /vaultwarden_michellepellon_com.pem;
+    ssl_certificate_key /vaultwarden_michellepellon_com.key;
+
+    # Prevent clickjacking
+    add_header X-Frame-Options "SAMEORIGIN";
+
+    # Block Cross-Site Scripting
+    add_header X-XSS-Protection "1; mode=block";
+
+    location / {
+      proxy_pass http://vaultwarden;
+      proxy_set_header	Host $host;
+      proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header  X-Forwarded-Proto $scheme;
+    }
+
+    location /notifications/hub {
+      proxy_pass http://vaultwarden:3012;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+    }
+
+    location /notifications/hub/negotiate {
+      proxy_pass http://vaultwarden:80;
+    }
+}
